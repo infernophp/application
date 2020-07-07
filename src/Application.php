@@ -4,107 +4,127 @@ declare(strict_types=1);
 
 namespace Inferno\Application;
 
-use Inferno\Application\Bootstrapper\BootstrapperInterface;
-use Inferno\Application\Bootstrapper\ConfigBootstrapper;
-use Inferno\Application\Bootstrapper\ServiceProviderBootstrapper;
-use Pimple\Container;
+use Inferno\HttpRequestHandler\Pipeline\PipelineInterface;
+use Inferno\HttpRequestHandler\Resolver\ResolverInterface;
+use Inferno\Routing\Route\RouteCollectorInterface;
+use Throwable;
 
-class Application implements ApplicationInterface
+final class Application implements ApplicationInterface
 {
     /**
-     * @var \Inferno\Application\Bootstrapper\BootstrapperInterface[]
+     * @var \Inferno\HttpRequestHandler\Pipeline\PipelineInterface
      */
-    protected $bootstrappers = [];
+    private PipelineInterface $pipeline;
 
     /**
-     * @var \Pimple\Container
+     * @var \Inferno\HttpRequestHandler\Resolver\ResolverInterface
      */
-    protected $container;
+    private ResolverInterface $resolver;
+
+    /**
+     * @var \Inferno\Routing\Route\RouteCollectorInterface
+     */
+    private RouteCollectorInterface $collector;
+
+    /**
+     * @var callable
+     */
+    private $emitter;
+
+    /**
+     * @var callable
+     */
+    private $requestFactory;
+
+    /**
+     * @var callable
+     */
+    private $errorResponseGenerator;
 
     /**
      * @var string
      */
-    protected $baseDir;
+    private string $locale;
 
     /**
-     * @param \Pimple\Container|null $container
-     * @param string $baseDir
+     * @param \Inferno\HttpRequestHandler\Pipeline\PipelineInterface $pipeline
+     * @param \Inferno\HttpRequestHandler\Resolver\ResolverInterface $resolver
+     * @param \Inferno\Routing\Route\RouteCollectorInterface $collector
+     * @param callable $emitter
+     * @param callable $requestFactory
+     * @param callable $errorResponseGenerator
+     * @param string $locale - default: en_EN
      */
-    public function __construct(string $baseDir, ?Container $container = null)
-    {
-        $this->baseDir = $baseDir;
-        $this->container = $container ?? new Container();
+    public function __construct(
+        PipelineInterface $pipeline,
+        ResolverInterface $resolver,
+        RouteCollectorInterface $collector,
+        callable $emitter,
+        callable $requestFactory,
+        callable $errorResponseGenerator,
+        string $locale = 'en_EN'
+    ) {
+        $this->pipeline = $pipeline;
+        $this->resolver = $resolver;
+        $this->collector = $collector;
+        $this->emitter = $emitter;
+        $this->requestFactory = $requestFactory;
+        $this->errorResponseGenerator = $errorResponseGenerator;
+        $this->locale = $locale;
     }
 
     /**
-     * @return \Pimple\Container
+     * @return void
      */
-    public function getContainer(): Container
+    public function run(): void
     {
-        return $this->container;
+        try {
+            $request = ($this->requestFactory)();
+            $response = $this->pipeline->handle($request);
+        } catch (Throwable $throwable) {
+            $response = ($this->errorResponseGenerator)($throwable);
+        }
+
+        ($this->emitter)($response);
+    }
+
+    /**
+     * @param string|callable|\Psr\Http\Server\MiddlewareInterface $middleware
+     *
+     * @return void
+     */
+    public function pipe($middleware) : void
+    {
+        $middleware = $this->resolver->resolve($middleware);
+
+        $this->pipeline->pipe($middleware);
+    }
+
+    /**
+     * @param callable $routes
+     *
+     * @return void
+     */
+    public function route(callable $routes) : void
+    {
+        ($routes)($this->collector);
     }
 
     /**
      * @return string
      */
-    public function getBaseDir(): string
+    public function getLocale() : string
     {
-        return $this->baseDir;
+        return $this->locale;
     }
 
     /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function addDefaultBootstrapper(): ApplicationInterface
-    {
-        $this->addBootstrapper(new ConfigBootstrapper($this->baseDir . '/config'));
-        $this->addBootstrapper(new ServiceProviderBootstrapper('config.providers'));
-        $this->addBootstrapper(new ServiceProviderBootstrapper('app.providers'));
-
-        return $this;
-    }
-
-    /**
-     * @param \Inferno\Application\Bootstrapper\BootstrapperInterface $bootstrapper
+     * @param string $locale
      *
-     * @return \Inferno\Application\ApplicationInterface
+     * @return void
      */
-    public function addBootstrapper(BootstrapperInterface $bootstrapper): ApplicationInterface
+    public function setLocale(string $locale) : void
     {
-        $this->bootstrappers[] = $bootstrapper;
-
-        return $this;
-    }
-
-    /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function boot(): ApplicationInterface
-    {
-        foreach ($this->bootstrappers as $bootstrapper) {
-            $bootstrapper->bootstrap($this);
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param callable $kernel
-     *
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function run(callable $kernel): ApplicationInterface
-    {
-        $kernel();
-
-        return $this;
-    }
-
-    /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function terminate(): ApplicationInterface
-    {
-        return $this;
+        $this->locale = $locale;
     }
 }

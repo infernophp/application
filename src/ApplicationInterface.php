@@ -4,47 +4,36 @@ declare(strict_types=1);
 
 namespace Inferno\Application;
 
-use Inferno\Application\Bootstrapper\BootstrapperInterface;
-use Pimple\Container;
-
 interface ApplicationInterface
 {
     /**
-     * @return \Pimple\Container
+     * @return void
      */
-    public function getContainer(): Container;
+    public function run(): void;
+
+    /**
+     * @param string|callable|\Psr\Http\Server\MiddlewareInterface $middleware
+     *
+     * @return void
+     */
+    public function pipe($middleware) : void;
+
+    /**
+     * @param callable $routes
+     *
+     * @return void
+     */
+    public function route(callable $routes) : void;
 
     /**
      * @return string
      */
-    public function getBaseDir(): string;
+    public function getLocale() : string;
 
     /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function addDefaultBootstrapper(): ApplicationInterface;
-
-    /**
-     * @param \Inferno\Application\Bootstrapper\BootstrapperInterface $bootstrapper
+     * @param string $locale
      *
-     * @return \Inferno\Application\ApplicationInterface
+     * @return void
      */
-    public function addBootstrapper(BootstrapperInterface $bootstrapper): ApplicationInterface;
-
-    /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function boot(): ApplicationInterface;
-
-    /**
-     * @param callable $kernel
-     *
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function run(callable $kernel): ApplicationInterface;
-
-    /**
-     * @return \Inferno\Application\ApplicationInterface
-     */
-    public function terminate(): ApplicationInterface;
+    public function setLocale(string $locale) : void;
 }

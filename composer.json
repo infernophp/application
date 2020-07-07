@@ -1,26 +1,18 @@
 {
   "name": "inferno/application",
-  "description": "Inferno application component",
+  "description": "inferno application component",
+  "type" : "library",
   "keywords": [
     "inferno",
     "application"
   ],
   "homepage": "https://github.com/infernophp/application",
   "license": "MIT",
-  "authors": [
-    {
-      "name": "Markus Nörenberg",
-      "email": "noerenberg.markus@gmail.com",
-      "role": "Developer"
-    }
-  ],
   "require": {
-    "php": ">=7.1",
-    "pimple/pimple": "^3.0"
-
+    "php": ">=7.4",
   },
   "require-dev": {
-    "phpstan/phpstan": "^0.11.1"
+    "phpstan/phpstan": "^0.12.32"
   },
   "autoload": {
     "psr-4": {
